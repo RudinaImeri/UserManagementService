@@ -30,11 +30,6 @@ namespace Betting.Backend.Core.Middleware
         {
             var path = context.Request.Path;
 
-            if(path.HasValue && path.Value.Contains("GetBalance"))
-            {
-
-            }
-
             var headerKey = "Authorization";
             if (context.Request.Headers.ContainsKey(headerKey))
             {

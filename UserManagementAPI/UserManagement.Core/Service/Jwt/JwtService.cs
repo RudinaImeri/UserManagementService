@@ -40,6 +40,8 @@ namespace Betting.Backend.Core.Services.Jwt
             };
 
             var token = new JwtSecurityToken(_configuration["Jwt:Issuer"],
+                              _configuration["Jwt:Audience"],
+                              claims,
               expires: DateTime.UtcNow.AddMinutes(Convert.ToInt32(_configuration["Jwt:ExpireMinutes"])),
               signingCredentials: credentials);
             return new JwtSecurityTokenHandler().WriteToken(token);
@@ -61,9 +63,11 @@ namespace Betting.Backend.Core.Services.Jwt
                     IssuerSigningKey = new SymmetricSecurityKey(key),
                     ValidateIssuer = true,
                     ValidateLifetime = true,
+                    ValidateAudience = true,
                     // set clockskew to zero so tokens expire exactly at token expiration time (instead of 5 minutes later)
                     ClockSkew = TimeSpan.Zero,
-                    ValidIssuer = _configuration["Jwt:Issuer"]
+                    ValidIssuer = _configuration["Jwt:Issuer"],
+                    ValidAudience = _configuration["Jwt:Audience"]
                 }, out SecurityToken validatedToken);
 
 

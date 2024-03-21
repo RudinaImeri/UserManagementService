@@ -15,7 +15,6 @@ namespace UserManagement.Core.Repositories
 {
     public interface IUserRepository
     {
-        public Task UpdateUserAsync(ApplicationUser user);
         public Task DeleteUserAsync(ApplicationUser user);
         public Task<bool> ValidateUserPasswordAsync(string userName, string password);
     }
@@ -31,12 +30,6 @@ namespace UserManagement.Core.Repositories
             _context = context;
             _mapperService = mapperService;
             _userManager = userManager;
-        }
-
-        public async Task UpdateUserAsync(ApplicationUser user)
-        {
-        var test =    await _userManager.UpdateAsync(user);
-
         }
 
         public async Task DeleteUserAsync(ApplicationUser user)

@@ -150,10 +150,13 @@ namespace UserManagement.API.Controllers
             }
         }
 
-        [HttpGet("GetUser/{id}")]
-        public async Task<IActionResult> GetUser(string id)
+        [HttpGet("GetUser")]
+        public async Task<IActionResult> GetUser()
         {
-            var user = await UserManager.FindByIdAsync(id);
+            var currentUser = await CurrentUserAsync;
+
+            var currentId = await UserManager.GetUserIdAsync(currentUser);
+            var user = await UserManager.FindByIdAsync(currentId);
 
             if (user == null)
             {
@@ -164,21 +167,53 @@ namespace UserManagement.API.Controllers
         }
 
         [HttpPut("UpdateUser")]
-        public async Task<IActionResult> UpdateUser([FromBody]UpdateDto user)
-        {
-            var userMapped = _mapperService.MapUserForUpdateEntityToDto(user);
-            await _userService.UpdateUserAsync(userMapped);
-
-            return NoContent();
-        }
-
-        // DELETE: /Users/{id}
-        [HttpDelete("DeleteUser/{id}")]
-        public async Task<IActionResult> DeleteUser(string id)
+        public async Task<IActionResult> UpdateUser([FromBody] UpdateDto user)
         {
             try
             {
-                var user = await UserManager.FindByIdAsync(id);
+                var currentUser = await CurrentUserAsync;
+
+                var currentId = UserManager.GetUserIdAsync(currentUser);
+                var userEntity = await UserManager.FindByIdAsync(currentId.Result);
+
+                if (userEntity == null)
+                {
+                    return NotFound($"User with ID {currentId} not found.");
+                }
+
+                userEntity.FirstName = user.FirstName;
+                userEntity.LastName = user.LastName;
+                userEntity.Email = user.Email;
+                userEntity.PhoneNumber = user.MobileNumber;
+                userEntity.Language = user.Language;
+                userEntity.Culture = user.Culture;
+
+                var result = await UserManager.UpdateAsync(userEntity);
+
+                if (!result.Succeeded)
+                {
+                    return BadRequest(result.Errors);
+                }
+
+                var updatedUser = await UserManager.FindByIdAsync(currentId.Result);
+
+                return Ok(updatedUser);
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(ex.Message);
+            }
+        }
+
+        [HttpDelete("DeleteUser")]
+        public async Task<IActionResult> DeleteUser()
+        {
+            try
+            {
+                var currentUser = await CurrentUserAsync;
+
+                var currentId = await UserManager.GetUserIdAsync(currentUser);
+                var user = await UserManager.FindByIdAsync(currentId);
 
                 if (user == null)
                 {

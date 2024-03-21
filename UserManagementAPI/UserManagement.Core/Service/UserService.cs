@@ -11,7 +11,6 @@ namespace UserManagement.Core.Service
 {
     public interface IUserService
     {
-        public Task UpdateUserAsync(ApplicationUser user);
         public Task DeleteUserAsync(ApplicationUser user);
         public Task<bool> ValidateUserPasswordAsync(string userName, string password);
     }
@@ -27,11 +26,6 @@ namespace UserManagement.Core.Service
         public async Task DeleteUserAsync(ApplicationUser user)
         {
             await _userRepository.DeleteUserAsync(user);
-        }
-
-        public async Task UpdateUserAsync(ApplicationUser user)
-        {
-            await _userRepository.UpdateUserAsync(user);
         }
 
         public Task<bool> ValidateUserPasswordAsync(string userName, string password)

@@ -3,6 +3,7 @@ using System.Diagnostics;
 using UserManagement.Core;
 using UserManagement.Core.Context;
 using UserManagement.Domain.Common.Enums;
+using Serilog;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -20,7 +21,10 @@ if (Debugger.IsAttached)
 }
 
 builder.Services.AddCore(configuration, platformEnvironment, platformType, hostBuilder);
-
+hostBuilder.UseSerilog((hostingContext, loggerConfiguration) =>
+{
+    loggerConfiguration.ReadFrom.Configuration(configuration);
+});
 builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
 
@@ -32,8 +36,8 @@ builder.Services.AddLocalization(options => options.ResourcesPath = "Resources")
 
 var app = builder.Build();
 app.Services.AddSeedData();
-
 app.Services.AddSwaggerUI(app);
+app.UseSerilogRequestLogging();
 
 app.UseCustomMiddlewares();
 app.UseHttpsRedirection();

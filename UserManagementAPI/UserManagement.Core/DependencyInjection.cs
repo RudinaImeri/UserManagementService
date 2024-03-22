@@ -1,8 +1,8 @@
-﻿using AutoMapper;
-using Betting.Backend.Core.Middleware;
+﻿using Betting.Backend.Core.Middleware;
 using Betting.Backend.Core.Services.Jwt;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Builder;
+using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
@@ -10,16 +10,9 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
-using System;
-using System.Collections.Generic;
-using System.Linq;
 using System.Text;
-using System.Threading.Tasks;
 using UserManagement.Core.Context;
-using UserManagement.Core.Repositories;
-using UserManagement.Core.Service;
 using UserManagement.Domain.Common.Enums;
-using UserManagement.Domain.Common.Mapper;
 using UserManagement.Domain.Entities;
 
 namespace UserManagement.Core
@@ -64,11 +57,10 @@ namespace UserManagement.Core
                   .AddDefaultTokenProviders()
                   .AddRoles<IdentityRole>();
 
-
+            services.AddHttpContextAccessor();
             services.AddTransient<UserManager<ApplicationUser>>();
             services.AddAuthentication(configuration, platformEnvironment);
             services.AddSwagger(configuration, platformEnvironment);
-            services.AddAutoMapperConfig();
             services.AddApplicationServices(configuration, platformEnvironment, platformType);
         }
 
@@ -155,30 +147,15 @@ namespace UserManagement.Core
 
             services.AddHttpContextAccessor();
 
-            services.AddScoped<IMapperService, MapperService>();
             services.AddScoped<IJwtService, JwtService>();
-            services.AddScoped<IUserService, UserService>();
-            services.AddScoped<IUserRepository, UserRepository>();
             services.AddSingleton<ILoggers, ApplicationLogger>();
-
-
+            services.AddSingleton<IHttpContextAccessor, HttpContextAccessor>();
         }
 
         public static void AddSwaggerUI(this IServiceProvider service, WebApplication app)
         {
             app.UseSwagger();
             app.UseSwaggerUI();
-        }
-
-        public static void AddAutoMapperConfig(this IServiceCollection services)
-        {
-            // Auto Mapper Configurations
-            var mappingConfig = new MapperConfiguration(mc =>
-            {
-                mc.AddProfile(new AutoMapperProfile());
-            });
-            IMapper mapper = mappingConfig.CreateMapper();
-            services.AddSingleton(mapper);
         }
 
         public static void UseCustomMiddlewares(this IApplicationBuilder builder)

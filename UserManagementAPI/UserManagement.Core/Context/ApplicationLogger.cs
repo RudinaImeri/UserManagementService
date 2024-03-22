@@ -1,39 +1,93 @@
-﻿using Microsoft.Extensions.Configuration;
-using Serilog;
+﻿using Serilog;
 using ILogger = Serilog.ILogger;
-using Serilog.Sinks.MSSqlServer;
+using Microsoft.AspNetCore.Http;
+using System.Text;
+using Microsoft.AspNetCore.Mvc.Controllers;
+using Microsoft.Extensions.Logging;
 
 namespace UserManagement.Core.Context
 {
     public interface ILoggers
     {
-        void LogInformation(string message, object details);
-        void LogWarning(string message, object details);
-        void LogError(string message, object details);
+        public Task LogAsync(string message, LogLevel logLevel);
     }
     public class ApplicationLogger : ILoggers
     {
         ILogger _logger;
-        IConfiguration _config;
-        public ApplicationLogger(IConfiguration config)
+        IHttpContextAccessor _contextAccessor;
+        public ApplicationLogger(IHttpContextAccessor contextAccessor)
         {
-            _config = config;
-            //_logger = new LoggerConfiguration()
-            //      .WriteTo.SqlServer(_config["ConnectionStrings:DefaultConnection"],
-            //                         sinkOptions: new MSSqlServerSinkOptions { TableName = "Logs" })
-            //      .CreateLogger();
+            _contextAccessor = contextAccessor;
+            _logger = new LoggerConfiguration()
+                 .WriteTo.File(
+                path: "logs/log-.txt",
+                rollingInterval: RollingInterval.Day,
+                outputTemplate: "{Timestamp:yyyy-MM-dd HH:mm:ss} [{Level}] Client IP: {ClientIP} Client Name: {ClientName} Host: {Host} Method: {Method} Params: {Params} Message: {Message}{NewLine}{Exception}")
+            .CreateLogger();
         }
-        public void LogError(string message, object details)
+
+        public async Task LogAsync(string message, LogLevel logLevel)
         {
-            _logger.Error("Message: {@message}, Error : {@details}", message, details);
+            var serilogLevel = ConvertToSerilogLevel(logLevel);
+
+            var request = _contextAccessor.HttpContext.Request;
+            var clientIP = _contextAccessor.HttpContext.Connection.RemoteIpAddress?.ToString();
+            var clientName = request.Headers["User-Agent"];
+            var hostName = Environment.MachineName;
+            var requestParameters = GetRequestParameters(request);
+
+            var httpContext = _contextAccessor.HttpContext;
+            var controllerActionDescriptor = httpContext?.GetEndpoint()?.Metadata.GetMetadata<ControllerActionDescriptor>();
+            var controllerName = controllerActionDescriptor?.ControllerName;
+            var actionName = controllerActionDescriptor?.ActionName;
+            var apiMethod = $"{controllerName}/{actionName}";
+
+            Log.Write(serilogLevel, "LogLevel: {LogLevel}, Time: {Time}, Client IP: {ClientIP}, Client Name: {ClientName}, Host Name: {HostName}, API Method: {ApiMethodName}, Request Content: {RequestContent}, Message: {Message}",
+                logLevel,
+                DateTime.UtcNow,
+                clientIP,
+                clientName,
+                hostName,
+                apiMethod,
+                requestParameters,
+                message);
         }
-        public void LogInformation(string message, object details)
+        private Serilog.Events.LogEventLevel ConvertToSerilogLevel(LogLevel logLevel)
         {
-            _logger.Information("Message: {@message}, Info: {@ticketDetails}", message, details);
+            return logLevel switch
+            {
+                LogLevel.Information => Serilog.Events.LogEventLevel.Information,
+                LogLevel.Warning => Serilog.Events.LogEventLevel.Warning,
+                LogLevel.Error => Serilog.Events.LogEventLevel.Error,
+                _ => Serilog.Events.LogEventLevel.Information,
+            };
         }
-        public void LogWarning(string message, object details)
+
+        public async Task<string> GetRequestParameters(HttpRequest request)
         {
-            _logger.Warning("Message: {@message}, Warning: {@ticketDetails}", message, details);
+            string requestContent = ""; // This variable will hold either the parameters or the body content
+
+            if (request.Method == "GET")
+            {
+                requestContent = string.Join("&", request.Query.Select(q => $"{q.Key}={q.Value}"));
+            }
+            else if (request.Method == "POST" && request.ContentType != null && request.ContentType.Contains("application/json"))
+            {
+                request.EnableBuffering();
+
+                using (var reader = new StreamReader(request.Body, encoding: Encoding.UTF8, detectEncodingFromByteOrderMarks: false, leaveOpen: true))
+                {
+                    requestContent = await reader.ReadToEndAsync();
+                    request.Body.Position = 0;
+                }
+            }
+            else
+            {
+                // For POST (or other methods) where body is not read or is not application/json
+                requestContent = "Request body not logged or non-JSON content type";
+            }
+            return requestContent;
         }
+
     }
 }

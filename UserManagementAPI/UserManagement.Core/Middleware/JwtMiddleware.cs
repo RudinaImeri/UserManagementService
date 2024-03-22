@@ -2,8 +2,10 @@
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.Logging;
 using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
+using UserManagement.Core.Context;
 using UserManagement.Domain.Entities;
 
 namespace Betting.Backend.Core.Middleware
@@ -12,18 +14,13 @@ namespace Betting.Backend.Core.Middleware
     {
         private readonly RequestDelegate _next;
         private readonly IConfiguration _configuration;
+        private readonly ILoggers _log;           
 
-        private static List<string> _whiteListedUrls = new List<string>()
-        {
-            "login",
-            "ValidateToken",
-            "hubs"
-        };
-
-        public JwtMiddleware(RequestDelegate next, IConfiguration configuration)
+        public JwtMiddleware(RequestDelegate next, IConfiguration configuration, ILoggers log)
         {
             _next = next;
             _configuration = configuration;
+            _log = log;
         }
 
         public async Task Invoke(HttpContext context, UserManager<ApplicationUser> userManager, IJwtService jwtService)
@@ -46,6 +43,8 @@ namespace Betting.Backend.Core.Middleware
                         var user = await userManager.FindByIdAsync(userClaimes[JwtRegisteredClaimNames.Sid]);
                         if (user == null)
                         {
+                           await _log.LogAsync($"User with id: {userClaimes[JwtRegisteredClaimNames.Sid]} does not exist", LogLevel.Error);
+
                             throw new UnauthorizedAccessException("User does not exist!");
                         }
 

@@ -10,11 +10,18 @@ using System.Text;
 using System.Threading.Tasks;
 using UserManagement.Domain.Common.Enums;
 using UserManagement.Domain.Entities;
+using Microsoft.Extensions.Logging;
 
 namespace UserManagement.Core.Context
 {
     public static class Seed
     {
+        private static ILoggers _log;
+
+        public static void Initialize(ILoggers loggers)
+        {
+            _log = loggers;
+        }
         public static void AddSeedData(this IServiceProvider serviceProvider)
         {
             using (var scope = serviceProvider.CreateScope())
@@ -42,9 +49,6 @@ namespace UserManagement.Core.Context
                 var appliedMigrations = dbFacade.GetAppliedMigrations();
                 var pendingMigrations = dbFacade.GetPendingMigrations();
 
-
-                //var aa = dbFacade.EnsureDeleted();
-
                 var a = dbFacade.GetMigrations();
                 dbFacade.Migrate();
 
@@ -61,100 +65,67 @@ namespace UserManagement.Core.Context
 
                     _ = context.SaveChangesAsync().Result;
                 }
-
-                //TODO
-                //if (platformEnvironment == PlatformEnvironment.Local)
-                {
-                    //AddTickets(ticketService);
-                }
             }
         }
 
         private static async Task AddTestUsers(UserManager<ApplicationUser> userManager, RoleManager<IdentityRole> roleManager)
         {
-            var password = "Admin123.";
-
-            // Admin user
-            var admin = new ApplicationUser
-            {
-                FirstName = "Admin",
-                LastName = "Admin",
-                UserName = "admin",
-                Email = "admin@usermanagement.com",
-                PhoneNumber = "044111222",
-                Culture = "en",
-                Language = "en"
-            };
             try
             {
+                IdentityResult roleAddResult = new();
 
-            var identityResult = userManager.CreateAsync(admin, password).Result;
-            var roleResult = roleManager.CreateAsync(new IdentityRole("Admin")).Result;
-            admin = userManager.FindByNameAsync(admin.UserName).Result;
-            var roleAddResult = userManager.AddToRoleAsync(admin, "Admin").Result;
-            // Manager user
-           
-            var manager = new ApplicationUser
-            {
-                FirstName = "Manager",
-                LastName = "Manager",
-                UserName = "manager",
-                Email = "manager@usermanagement.com",
-                PhoneNumber = "044111222",
-                Culture = "en",
-                Language = "en"
-            };
-            identityResult = userManager.CreateAsync(manager, password).Result;
-            roleResult = roleManager.CreateAsync(new IdentityRole("Manager")).Result;
-            manager = userManager.FindByNameAsync(manager.UserName).Result;
-            roleAddResult = userManager.AddToRoleAsync(manager, "Manager").Result;
+                var password = "Admin123.";
+                var message = "";
 
-            // Regular user
-            var user = new ApplicationUser
-            {
-                FirstName = "User",
-                LastName = "User",
-                UserName = "user",
-                Email = "user@usermanagement.com",
-                PhoneNumber = "044111222",
-                Culture = "en",
-                Language = "en"
-            };
-            identityResult = userManager.CreateAsync(user, password).Result;
-            roleResult = roleManager.CreateAsync(new IdentityRole("User")).Result;
-            user = userManager.FindByNameAsync(user.UserName).Result;
-            roleAddResult = userManager.AddToRoleAsync(user, "User").Result;
+                // Admin user
+                var admin = new ApplicationUser
+                {
+                    FirstName = "Admin",
+                    LastName = "Admin",
+                    UserName = "admin",
+                    Email = "admin@usermanagement.com",
+                    PhoneNumber = "044111222",
+                    Culture = "en",
+                    Language = "en"
+                };
+
+                var identityResult = userManager.CreateAsync(admin, password).Result;
+                var roleResult = roleManager.CreateAsync(new IdentityRole("Admin")).Result;
+                admin = userManager.FindByNameAsync(admin.UserName).Result;
+                if (admin != null)
+                {
+                    roleAddResult = userManager.AddToRoleAsync(admin, "Admin").Result;
+
+                    message = "Test user and role: Admin was addedd successfully";
+                    await _log.LogAsync(message, LogLevel.Information);
+                }
+
+                // Regular user
+                var user = new ApplicationUser
+                {
+                    FirstName = "User",
+                    LastName = "User",
+                    UserName = "user",
+                    Email = "user@usermanagement.com",
+                    PhoneNumber = "044111222",
+                    Culture = "en",
+                    Language = "en"
+                };
+                identityResult = userManager.CreateAsync(user, password).Result;
+                roleResult = roleManager.CreateAsync(new IdentityRole("User")).Result;
+                user = userManager.FindByNameAsync(user.UserName).Result;
+                if (user != null)
+                {
+                    roleAddResult = userManager.AddToRoleAsync(user, "User").Result;
+
+                    message = "Test user and role: USer was addedd successfully";
+                    await _log.LogAsync(message, LogLevel.Information);
+                }
             }
             catch (Exception ex)
             {
-                var test = ex.Message;
+                await _log.LogAsync(ex.Message, LogLevel.Error);
             }
         }
-
-        private static async Task CreateUserAndAddToRoleAsync(UserManager<ApplicationUser> userManager, ApplicationUser user, string password, string roleName)
-        {
-            var userExists = await userManager.FindByNameAsync(user.UserName);
-            if (userExists == null)
-            {
-                try
-                {
-
-                var identityResult = userManager.CreateAsync(user, password).Result;
-                if (identityResult.Succeeded)
-                {
-                    await userManager.AddToRoleAsync(user, roleName);
-                }
-                else
-                {
-                    // Handle error, e.g., log or throw
-                }
-                }
-                catch(Exception ex)
-                {
-                    var test = ex.Message;
-                }
-            }
-        }
-
     }
 }
